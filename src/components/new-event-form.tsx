@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Loader2, Plus } from "lucide-react";
 import { createEvent } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,8 +13,13 @@ export function NewEventForm() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>New event</CardTitle>
+      <CardHeader className="border-b pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <span className="flex size-7 items-center justify-center rounded-full bg-gold-soft text-saffron-ink">
+            <Plus className="size-4" strokeWidth={2.5} />
+          </span>
+          New event
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form action={action} className="grid gap-4">
@@ -32,11 +38,15 @@ export function NewEventForm() {
             <Input id="event_date" name="event_date" type="date" required className="h-12 text-base" />
           </div>
           {state?.error && (
-            <p className="text-sm text-destructive" role="alert">
+            <p
+              className="rounded-lg bg-destructive/8 px-3 py-2 text-sm font-medium text-destructive"
+              role="alert"
+            >
               {state.error}
             </p>
           )}
           <Button type="submit" disabled={pending} className="h-12 text-base">
+            {pending && <Loader2 className="animate-spin" />}
             {pending ? "Creating…" : "Create event"}
           </Button>
         </form>

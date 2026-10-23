@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Light theme only: `dark:` utilities only apply under a .dark class, which is never set,
+   so OS dark mode cannot half-switch the UI. */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -9,7 +11,17 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-display);
+  --font-display: var(--font-display);
+  --color-navy: var(--navy);
+  --color-navy-deep: var(--navy-deep);
+  --color-chakra: var(--chakra);
+  --color-saffron: var(--saffron);
+  --color-saffron-ink: var(--saffron-ink);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-india-green: var(--india-green);
+  --color-success: var(--success);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,83 +60,105 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * EUIS palette (derived from the society seal). Light theme only.
+ *   navy   #1B2F7E  primary actions, links, focus      (white text 12:1)
+ *   deep   #121F57  header / theme colour
+ *   chakra #0B2FA0  Ashoka-chakra blue (accents)
+ *   saffron #F07A12 decorative accent; text uses saffron-ink #A44A00
+ *   gold   #E8B10E  seal band; hairlines, highlights
+ *   green  #128A12  tricolour green; success #15803D
+ *   paper  #FAF7F0  warm off-white page background
+ */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
+  color-scheme: light;
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --navy: #1b2f7e;
+  --navy-deep: #121f57;
+  --chakra: #0b2fa0;
+  --saffron: #f07a12;
+  --saffron-ink: #a44a00;
+  --gold: #e8b10e;
+  --gold-soft: #fbf1d3;
+  --india-green: #128a12;
+  --success: #15803d;
+
+  --background: #faf7f0;
+  --foreground: #1a1d33;
+  --card: #ffffff;
+  --card-foreground: #1a1d33;
+  --popover: #ffffff;
+  --popover-foreground: #1a1d33;
+  --primary: var(--navy);
+  --primary-foreground: #ffffff;
+  --secondary: #f2ecdf;
+  --secondary-foreground: var(--navy);
+  --muted: #f2ecdf;
+  --muted-foreground: #5d5848;
+  --accent: var(--gold-soft);
+  --accent-foreground: #5c4300;
+  --destructive: #c0262d;
+  --border: #e5dcc8;
+  --input: #d6cbb3;
+  --ring: #2c46b8;
+  --chart-1: var(--navy);
+  --chart-2: var(--saffron);
+  --chart-3: var(--gold);
+  --chart-4: var(--india-green);
+  --chart-5: var(--chakra);
+  --radius: 0.75rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1d33;
+  --sidebar-primary: var(--navy);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f2ecdf;
+  --sidebar-accent-foreground: var(--navy);
+  --sidebar-border: #e5dcc8;
+  --sidebar-ring: #2c46b8;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: hidden;
+  }
+  /* Date inputs on iOS ignore height without this. */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
+}
+
+@layer utilities {
+  /* Thin saffron / gold / green rule echoing the tricolour and seal band. */
+  .tricolour-rule {
+    background: linear-gradient(
+      90deg,
+      var(--saffron) 0 33.34%,
+      var(--gold) 33.34% 66.67%,
+      var(--india-green) 66.67% 100%
+    );
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .px-safe {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
   }
 }

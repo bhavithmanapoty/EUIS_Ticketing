@@ -2,12 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Clock, FileSpreadsheet, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  FileSpreadsheet,
+  Info,
+  Loader2,
+  Upload,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { DietBadge, MemberBadge, TicketTypeBadge } from "@/components/attendee-badges";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogClose,
@@ -169,36 +179,54 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
     const sent = items.filter((x) => x.status === "sent").length;
     const failed = items.filter((x) => x.status === "failed").length;
     return (
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardContent className="grid gap-3">
-            <div className="text-lg font-semibold">
+            <div className="flex items-center gap-2 text-lg font-semibold text-navy">
+              {sending ? (
+                <Loader2 className="size-5 animate-spin text-saffron-ink" />
+              ) : failed ? (
+                <AlertTriangle className="size-5 text-amber-600" />
+              ) : (
+                <CheckCircle2 className="size-5 text-success" />
+              )}
               {sending ? `Sending ${done} / ${items.length}…` : "Finished"}
             </div>
             <Progress value={items.length ? (done / items.length) * 100 : 100} />
-            <div className="text-sm text-muted-foreground">
-              {sent} sent · {failed} failed
-              {sending && " · keep this page open and the screen on"}
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+              <span className="font-medium text-success">{sent} sent</span>
+              <span className={cn("font-medium", failed ? "text-red-700" : "text-muted-foreground")}>
+                {failed} failed
+              </span>
+              {sending && (
+                <span className="text-muted-foreground">Keep this page open and the screen on</span>
+              )}
             </div>
           </CardContent>
         </Card>
         {items.length === 0 && <p className="text-muted-foreground">Nothing to send.</p>}
-        <ul className="grid gap-1">
+        <ul className="grid grid-cols-1 gap-2">
           {items.map((it) => (
-            <li key={it.id} className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
-              {it.status === "pending" && <Clock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
-              {it.status === "sent" && <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-600" />}
-              {it.status === "failed" && <XCircle className="mt-0.5 size-4 shrink-0 text-red-600" />}
+            <li
+              key={it.id}
+              className={cn(
+                "flex items-start gap-2.5 rounded-xl border bg-card px-3.5 py-3 text-sm shadow-xs",
+                it.status === "failed" && "border-red-200 bg-red-50/60"
+              )}
+            >
+              {it.status === "pending" && <Clock className="mt-0.5 size-5 shrink-0 text-muted-foreground" />}
+              {it.status === "sent" && <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" />}
+              {it.status === "failed" && <XCircle className="mt-0.5 size-5 shrink-0 text-red-600" />}
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{it.name}</div>
                 <div className="truncate text-muted-foreground">{it.email}</div>
-                {it.error && <div className="text-red-700 break-words">{it.error}</div>}
+                {it.error && <div className="mt-1 text-red-800 break-words">{it.error}</div>}
               </div>
             </li>
           ))}
         </ul>
         {!sending && (
-          <Link href={`/events/${eventId}`} className={buttonVariants({ className: "h-12 text-base" })}>
+          <Link href={`/events/${eventId}`} className={buttonVariants({ className: "h-12 w-full text-base" })}>
             Back to event
           </Link>
         )}
@@ -210,12 +238,25 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
   const overGmailLimit = preview && preview.sentLast24h + toSend > GMAIL_DAILY_SAFE_LIMIT;
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       {/* ---- Upload ---- */}
-      <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-center hover:bg-muted">
-        <FileSpreadsheet className="size-8 text-muted-foreground" />
-        <span className="font-medium">{loading ? "Reading…" : preview ? "Choose a different file" : "Choose Excel file (.xlsx)"}</span>
-        <span className="text-xs text-muted-foreground">
+      <label
+        className={cn(
+          "flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-gold/70 bg-card px-4 text-center transition-colors hover:bg-gold-soft/40 active:bg-gold-soft/60 has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50 has-[:disabled]:cursor-default has-[:disabled]:opacity-70",
+          preview ? "py-4" : "py-7"
+        )}
+      >
+        <span className="flex size-12 items-center justify-center rounded-full bg-gold-soft text-saffron-ink">
+          {loading ? (
+            <Loader2 className="size-6 animate-spin" />
+          ) : preview ? (
+            <Upload className="size-6" />
+          ) : (
+            <FileSpreadsheet className="size-6" />
+          )}
+        </span>
+        <span className="text-base font-semibold text-navy">{loading ? "Reading…" : preview ? "Choose a different file" : "Choose Excel file (.xlsx)"}</span>
+        <span className="max-w-xs text-xs leading-relaxed text-muted-foreground">
           Required: Student ID, Name, Purchaser Email. Optional: Dietary requirements,
           Membership, Ticket Type
         </span>
@@ -252,11 +293,14 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
       {preview && preview.errors.length === 0 && (
         <>
           <Card>
-            <CardContent className="grid gap-1 text-sm">
-              <div className="mb-1 truncate font-medium">{preview.fileName}</div>
+            <CardContent className="grid gap-2 text-sm">
+              <div className="mb-1 flex min-w-0 items-center gap-2 border-b pb-3 font-semibold">
+                <FileSpreadsheet className="size-4 shrink-0 text-india-green" />
+                <span className="truncate">{preview.fileName}</span>
+              </div>
               <Row label="Rows in sheet" value={preview.rows.length} />
               <Row label="Already have tickets (skipped)" value={preview.rows.length - preview.newRows.length} />
-              <Row label="New tickets" value={preview.newRows.length} />
+              <Row label="New tickets" value={preview.newRows.length} strong />
               {preview.unsentCount > 0 && (
                 <Row label="Earlier unsent / failed (will retry)" value={preview.unsentCount} />
               )}
@@ -264,7 +308,7 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
           </Card>
 
           {preview.warnings.length > 0 && (
-            <Alert className="border-amber-300 bg-amber-50 text-amber-950">
+            <Alert className="border-amber-300 bg-amber-50 text-amber-950 *:[svg]:text-amber-600">
               <AlertTriangle />
               <AlertTitle>Check these rows (they look edited since the last upload)</AlertTitle>
               <AlertDescription className="text-amber-900">
@@ -281,9 +325,10 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
           )}
 
           {overGmailLimit && (
-            <Alert>
+            <Alert className="border-blue-200 bg-blue-50 text-blue-950 *:[svg]:text-blue-700">
+              <Info />
               <AlertTitle>Close to Gmail’s daily limit</AlertTitle>
-              <AlertDescription>
+              <AlertDescription className="text-blue-900">
                 {preview.sentLast24h} emails were sent in the last 24 hours. Gmail allows about 500
                 a day; sending {toSend} more may fail part way. Failed ones can be retried tomorrow by
                 re-uploading.
@@ -292,15 +337,17 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
           )}
 
           {preview.newRows.length > 0 && (
-            <ul className="grid gap-1">
+            <ul className="grid grid-cols-1 gap-2">
               {preview.newRows.map((r, i) => (
-                <li key={i} className="rounded-md border px-3 py-2 text-sm">
+                <li key={i} className="rounded-xl border bg-card px-3.5 py-3 text-sm shadow-xs">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-medium">{r.name}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">{r.studentId}</span>
+                    <span className="min-w-0 truncate font-semibold">{r.name}</span>
+                    <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground">
+                      {r.studentId}
+                    </span>
                   </div>
                   <div className="truncate text-muted-foreground">{r.email}</div>
-                  <div className="mt-1 flex gap-1">
+                  <div className="mt-2 flex flex-wrap gap-1.5 empty:hidden">
                     <DietBadge value={r.dietaryRequirements} />
                     <MemberBadge value={r.membership} />
                     <TicketTypeBadge value={r.ticketType} />
@@ -310,7 +357,7 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
             </ul>
           )}
 
-          <div className="sticky bottom-0 -mx-4 border-t bg-background p-4">
+          <div className="sticky bottom-0 -mx-4 border-t bg-background/95 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur supports-backdrop-filter:bg-background/85">
             <Button
               className="h-12 w-full text-base"
               disabled={toSend === 0 || sending}
@@ -329,8 +376,8 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <DialogClose render={<Button variant="outline" className="h-11" />}>Cancel</DialogClose>
-                <Button className="h-11" onClick={send}>
+                <DialogClose render={<Button variant="outline" className="h-12 text-base sm:h-11" />}>Cancel</DialogClose>
+                <Button className="h-12 text-base sm:h-11" onClick={send}>
                   Send now
                 </Button>
               </DialogFooter>
@@ -342,11 +389,11 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
   );
 }
 
-function Row({ label, value }: { label: string; value: number }) {
+function Row({ label, value, strong }: { label: string; value: number; strong?: boolean }) {
   return (
     <div className="flex justify-between gap-2">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-semibold tabular-nums">{value}</span>
+      <span className={strong ? "font-medium text-foreground" : "text-muted-foreground"}>{label}</span>
+      <span className={cn("font-semibold tabular-nums", strong && "text-base text-navy")}>{value}</span>
     </div>
   );
 }

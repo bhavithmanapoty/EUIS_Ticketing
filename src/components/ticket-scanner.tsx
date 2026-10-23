@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { IDetectedBarcode, IScannerError } from "@yudiel/react-qr-scanner";
-import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { AlertTriangle, CameraOff, CheckCircle2, Loader2, ScanLine, XCircle } from "lucide-react";
 import { DietBadge, MemberBadge, TicketTypeBadge } from "@/components/attendee-badges";
 import { Button } from "@/components/ui/button";
 import { formatScanTime } from "@/lib/format";
@@ -23,7 +23,7 @@ const Scanner = dynamic(
       return m.Scanner;
     }),
   {
-  ssr: false,
+    ssr: false,
     loading: () => <div className="aspect-square w-full animate-pulse bg-zinc-900" />,
   }
 );
@@ -96,7 +96,7 @@ export function TicketScanner({ eventId }: { eventId: string }) {
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-black">
+    <div className="flex flex-1 flex-col bg-black pb-[env(safe-area-inset-bottom)]">
       <div className="relative mx-auto w-full max-w-xl">
         <Scanner
           onScan={onScan}
@@ -123,22 +123,32 @@ export function TicketScanner({ eventId }: { eventId: string }) {
         )}
       </div>
 
-      <div className="mx-auto w-full max-w-xl p-4 text-center text-sm text-zinc-300">
-        {cameraError ?? "Point the camera at a ticket QR code"}
+      <div
+        className={cn(
+          "px-safe mx-auto flex w-full max-w-xl items-start justify-center gap-2 py-5 text-center text-base",
+          cameraError ? "text-red-200" : "text-zinc-200"
+        )}
+      >
+        {cameraError ? (
+          <CameraOff className="mt-0.5 size-5 shrink-0 text-red-300" />
+        ) : (
+          <ScanLine className="mt-0.5 size-5 shrink-0 text-gold" />
+        )}
+        <span>{cameraError ?? "Point the camera at a ticket QR code"}</span>
       </div>
 
       {(result || error) && (
-        <div className="fixed inset-x-0 bottom-0 z-20 max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl">
+        <div className="fixed inset-x-0 bottom-0 z-20 max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-card pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,0.45)] animate-in slide-in-from-bottom-8 fade-in-0 duration-200">
           <div className="mx-auto max-w-xl">
             {error ? (
               <Banner tone="red" icon={<XCircle />} title="Couldn't check ticket" subtitle={error} />
             ) : (
               <ResultBody result={result!} />
             )}
-            <div className="grid gap-2 p-4">
+            <div className="px-safe grid gap-2.5 pt-5 pb-4">
               {result?.status === "VALID" && (
                 <Button
-                  className="h-14 bg-green-600 text-lg hover:bg-green-700"
+                  className="h-14 bg-green-700 text-lg text-white shadow-green-900/20 hover:bg-green-800 active:bg-green-800 [&_svg:not([class*='size-'])]:size-5"
                   disabled={busy}
                   onClick={() => checkIn(result.attendee.id)}
                 >
@@ -209,18 +219,25 @@ function ResultBody({ result }: { result: VerifyResult }) {
 }
 
 const TONES = {
-  green: "bg-green-600 text-white",
+  green: "bg-green-700 text-white",
   amber: "bg-amber-400 text-amber-950",
   red: "bg-red-600 text-white",
 };
 
 function Banner(props: { tone: keyof typeof TONES; icon: React.ReactNode; title: string; subtitle?: string }) {
   return (
-    <div className={cn("flex items-center gap-3 rounded-t-2xl px-4 py-5 [&_svg]:size-9 [&_svg]:shrink-0", TONES[props.tone])}>
+    <div
+      className={cn(
+        "px-safe flex items-center gap-3.5 rounded-t-3xl py-5 [&_svg]:size-10 [&_svg]:shrink-0",
+        TONES[props.tone]
+      )}
+    >
       {props.icon}
-      <div>
-        <div className="text-2xl font-bold">{props.title}</div>
-        {props.subtitle && <div className="text-base opacity-90">{props.subtitle}</div>}
+      <div className="min-w-0">
+        <div className="text-2xl leading-tight font-bold">{props.title}</div>
+        {props.subtitle && (
+          <div className="mt-0.5 text-base font-medium break-words opacity-95">{props.subtitle}</div>
+        )}
       </div>
     </div>
   );
@@ -228,12 +245,12 @@ function Banner(props: { tone: keyof typeof TONES; icon: React.ReactNode; title:
 
 function Details({ attendee }: { attendee: AttendeeDetails }) {
   return (
-    <div className="grid gap-3 px-4 pt-4">
+    <div className="px-safe grid gap-3 pt-5">
       <div>
-        <div className="text-2xl font-bold break-words">{attendee.name}</div>
-        <div className="text-lg text-muted-foreground">{attendee.studentId}</div>
+        <div className="text-2xl leading-tight font-bold break-words text-foreground">{attendee.name}</div>
+        <div className="mt-1 text-lg tracking-wide tabular-nums text-muted-foreground">{attendee.studentId}</div>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 empty:hidden">
         <DietBadge value={attendee.dietaryRequirements} large />
         <MemberBadge value={attendee.membership} large />
         <TicketTypeBadge value={attendee.ticketType} large />
