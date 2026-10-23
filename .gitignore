@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# real purchaser data - never commit
+*.xlsx
+
+!.env.example
+
+# copied from node_modules on install
+/public/zxing_reader.wasm
