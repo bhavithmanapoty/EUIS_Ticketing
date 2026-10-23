@@ -104,8 +104,8 @@ export async function POST(
         student_id: r.studentId,
         name: r.name,
         email: r.email,
-        dietary_requirements: r.dietaryRequirements,
-        membership: r.membership,
+        dietary_requirements: r.dietaryRequirements || null,
+        membership: r.membership || null,
         ticket_type: r.ticketType || null,
       }))
     );

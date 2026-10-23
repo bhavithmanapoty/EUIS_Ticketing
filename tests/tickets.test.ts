@@ -115,11 +115,11 @@ describe("parseWorkbook", () => {
     ]);
   });
 
-  it("fills blank dietary/membership with None and strips invisible characters", () => {
+  it("leaves blank optional cells empty and strips invisible characters", () => {
     const result = parseWorkbook(xlsx([HEADERS, ["S1\u200b", "A\u00a0B", "a@b.co", "", ""]]));
     expect(result.errors).toEqual([]);
     expect(result.rows[0]).toEqual({
-      studentId: "S1", name: "A B", email: "a@b.co", dietaryRequirements: "None", membership: "None", ticketType: "",
+      studentId: "S1", name: "A B", email: "a@b.co", dietaryRequirements: "", membership: "", ticketType: "",
     });
   });
 
@@ -141,12 +141,32 @@ describe("parseWorkbook", () => {
     expect(result.rows[0].ticketType).toBe("");
   });
 
-  it("reports missing columns", () => {
+  it("only requires Student ID, Name and Purchaser Email columns", () => {
     const result = parseWorkbook(xlsx([["Student ID", "Name", "Purchaser Email"], ["S1", "A", "a@b.co"]]));
-    expect(result.errors.map((e) => e.message)).toEqual([
-      'Missing column "Dietary requirements"',
-      'Missing column "Membership"',
+    expect(result.errors).toEqual([]);
+    expect(result.rows[0]).toEqual({
+      studentId: "S1", name: "A", email: "a@b.co", dietaryRequirements: "", membership: "", ticketType: "",
+    });
+  });
+
+  it("handles optional values row by row", () => {
+    const result = parseWorkbook(
+      xlsx([
+        ["Student ID", "Name", "Purchaser Email", "Membership", "Ticket Type"],
+        ["S1", "A", "a@b.co", "Member", ""],
+        ["S2", "B", "b@b.co", "", "VIP"],
+      ])
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.rows.map((r) => [r.dietaryRequirements, r.membership, r.ticketType])).toEqual([
+      ["", "Member", ""],
+      ["", "", "VIP"],
     ]);
+  });
+
+  it("reports missing required columns", () => {
+    const result = parseWorkbook(xlsx([["Student ID", "Name", "Dietary requirements"], ["S1", "A", "Veg"]]));
+    expect(result.errors.map((e) => e.message)).toEqual(['Missing column "Purchaser Email"']);
   });
 
   it("reports bad rows with their Excel row numbers (blank lines skipped)", () => {

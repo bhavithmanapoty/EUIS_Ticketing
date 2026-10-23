@@ -216,8 +216,8 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
         <FileSpreadsheet className="size-8 text-muted-foreground" />
         <span className="font-medium">{loading ? "Reading…" : preview ? "Choose a different file" : "Choose Excel file (.xlsx)"}</span>
         <span className="text-xs text-muted-foreground">
-          Columns: Student ID, Name, Purchaser Email, Dietary requirements, Membership,
-          optional Ticket Type (dietary, membership and ticket type may be blank)
+          Required: Student ID, Name, Purchaser Email. Optional: Dietary requirements,
+          Membership, Ticket Type
         </span>
         <input
           ref={fileInput}

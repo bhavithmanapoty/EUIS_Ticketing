@@ -4,25 +4,25 @@ export type TicketRow = {
   studentId: string;
   name: string;
   email: string;
+  // Optional columns: "" when the column is absent or the row's cell is blank.
   dietaryRequirements: string;
   membership: string;
-  /** Optional column; "" when the column is absent or the cell is blank. */
   ticketType: string;
 };
 
 export type RowError = { row: number; message: string };
 
-/** Spreadsheet headers (normalised to lowercase, single spaces) -> fields. */
+/** Required spreadsheet headers (normalised to lowercase, single spaces) -> fields. */
 export const COLUMNS: { header: string; field: keyof TicketRow }[] = [
   { header: "student id", field: "studentId" },
   { header: "name", field: "name" },
   { header: "purchaser email", field: "email" },
-  { header: "dietary requirements", field: "dietaryRequirements" },
-  { header: "membership", field: "membership" },
 ];
 
-/** Columns that may be missing from the sheet entirely. */
+/** Columns that may be missing from the sheet, or blank in any row. */
 export const OPTIONAL_COLUMNS: { header: string; field: keyof TicketRow }[] = [
+  { header: "dietary requirements", field: "dietaryRequirements" },
+  { header: "membership", field: "membership" },
   { header: "ticket type", field: "ticketType" },
 ];
 
@@ -41,19 +41,18 @@ const EMAIL_RE = /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/;
 
 export const MAX_ROWS = 1000;
 
-/** Fields that must be filled in; the others default to BLANK_VALUE. */
+/** Fields that must be filled in on every row. */
 export const REQUIRED_FIELDS: (keyof TicketRow)[] = ["studentId", "name", "email"];
-export const BLANK_VALUE = "None";
 
-/** Trims all fields and fills blank optional ones with "None". */
+/** Trims all fields; missing optional fields become "". */
 export function normaliseRow(r: Partial<Record<keyof TicketRow, unknown>>): TicketRow {
   const get = (f: keyof TicketRow) => String(r[f] ?? "").trim();
   return {
     studentId: get("studentId"),
     name: get("name"),
     email: get("email"),
-    dietaryRequirements: get("dietaryRequirements") || BLANK_VALUE,
-    membership: get("membership") || BLANK_VALUE,
+    dietaryRequirements: get("dietaryRequirements"),
+    membership: get("membership"),
     ticketType: get("ticketType"),
   };
 }

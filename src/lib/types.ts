@@ -11,8 +11,8 @@ export type TicketRecord = {
   student_id: string;
   name: string;
   email: string;
-  dietary_requirements: string;
-  membership: string;
+  dietary_requirements: string | null;
+  membership: string | null;
   ticket_type: string | null;
   email_sent_at: string | null;
   email_error: string | null;
@@ -26,8 +26,8 @@ export type AttendeeDetails = {
   id: string;
   name: string;
   studentId: string;
-  dietaryRequirements: string;
-  membership: string;
+  dietaryRequirements: string | null;
+  membership: string | null;
   ticketType: string | null;
 };
 
