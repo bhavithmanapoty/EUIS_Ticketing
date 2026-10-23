@@ -47,3 +47,6 @@ next-env.d.ts
 
 # copied from node_modules on install
 /public/zxing_reader.wasm
+
+# local docs - not tracked
+README.md
