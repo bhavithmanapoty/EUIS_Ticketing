@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { utils, write } from "xlsx";
 import { parseWorkbook } from "@/lib/excel";
-import { computeNewRows, countByStudent, validateRows, type TicketRow } from "@/lib/tickets";
+import { computeNewRows, countByStudent, findWarnings, validateRows, type TicketRow } from "@/lib/tickets";
 
 const HEADERS = ["Student ID", "Name", "Purchaser Email", "Dietary requirements", "Membership"];
 
@@ -56,12 +56,45 @@ describe("validateRows", () => {
     }
   });
 
+  it("allows blank dietary requirements and membership", () => {
+    expect(validateRows([{ ...row("S1"), dietaryRequirements: "", membership: "" }])).toEqual([]);
+  });
+
   it("flags empty fields and bad emails with the Excel row number", () => {
     const errors = validateRows([row("S1"), { ...row(""), email: "not-an-email" }]);
     expect(errors).toEqual([
       { row: 3, message: "Student ID is empty" },
       { row: 3, message: 'Invalid email "not-an-email"' },
     ]);
+  });
+});
+
+describe("findWarnings", () => {
+  const r = (studentId: string, email: string, name = "P"): TicketRow => ({ ...row(studentId, name), email });
+
+  it("is quiet for a plain re-upload", () => {
+    const rows = [r("S1", "a@x.com"), r("S2", "b@x.com")];
+    const existing = rows.map((x) => ({ studentId: x.studentId, email: x.email }));
+    expect(findWarnings(rows, [], existing)).toEqual([]);
+  });
+
+  it("is quiet for a second ticket bought by the same student", () => {
+    const rows = [r("S1", "a@x.com"), r("S1", "a@x.com")];
+    expect(findWarnings(rows, [rows[1]], [{ studentId: "S1", email: "a@x.com" }])).toEqual([]);
+  });
+
+  it("warns when a corrected Student ID would give the same email a second ticket", () => {
+    const rows = [r("S1234567", "a@x.com")];
+    const w = findWarnings(rows, rows, [{ studentId: "S123456", email: "A@x.com" }]);
+    expect(w).toHaveLength(1);
+    expect(w[0]).toMatch(/already has a ticket under Student ID S123456/);
+  });
+
+  it("warns when a corrected email would never be emailed", () => {
+    const rows = [r("S1", "fixed@x.com")];
+    const w = findWarnings(rows, [], [{ studentId: "s1", email: "typo@x.com" }]);
+    expect(w).toHaveLength(1);
+    expect(w[0]).toMatch(/won't be emailed/);
   });
 });
 
@@ -79,6 +112,14 @@ describe("parseWorkbook", () => {
       { studentId: "S100", name: "Alice", email: "alice@example.com", dietaryRequirements: "Vegetarian", membership: "Member" },
       { studentId: "12345", name: "Bob", email: "bob@example.com", dietaryRequirements: "Non-Vegetarian", membership: "Non-Member" },
     ]);
+  });
+
+  it("fills blank dietary/membership with None and strips invisible characters", () => {
+    const result = parseWorkbook(xlsx([HEADERS, ["S1\u200b", "A\u00a0B", "a@b.co", "", ""]]));
+    expect(result.errors).toEqual([]);
+    expect(result.rows[0]).toEqual({
+      studentId: "S1", name: "A B", email: "a@b.co", dietaryRequirements: "None", membership: "None",
+    });
   });
 
   it("reports missing columns", () => {

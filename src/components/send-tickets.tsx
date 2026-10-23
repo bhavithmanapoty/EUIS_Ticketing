@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Clock, FileSpreadsheet, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, FileSpreadsheet, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { DietBadge, MemberBadge } from "@/components/attendee-badges";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -19,7 +19,14 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { parseWorkbook } from "@/lib/excel";
-import { computeNewRows, type RowError, type TicketRow } from "@/lib/tickets";
+import {
+  computeNewRows,
+  countByStudent,
+  findWarnings,
+  type ExistingTicket,
+  type RowError,
+  type TicketRow,
+} from "@/lib/tickets";
 
 const BATCH_SIZE = 5;
 // Gmail daily limit / throttling / bad login: every further attempt would fail too.
@@ -31,6 +38,7 @@ type Preview = {
   rows: TicketRow[];
   newRows: TicketRow[];
   errors: RowError[];
+  warnings: string[];
   unsentCount: number;
   sentLast24h: number;
 };
@@ -85,11 +93,16 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
       const res = await fetch(`/api/events/${eventId}/tickets`);
       const info = await res.json();
       if (!res.ok) throw new Error(info.error ?? "Could not load existing tickets");
+      const existing = info.existing as ExistingTicket[];
+      const newRows = parsed.errors.length
+        ? []
+        : computeNewRows(parsed.rows, countByStudent(existing.map((t) => t.studentId)));
       setPreview({
         fileName: file.name,
         rows: parsed.rows,
         errors: parsed.errors,
-        newRows: parsed.errors.length ? [] : computeNewRows(parsed.rows, info.existingCounts),
+        newRows,
+        warnings: parsed.errors.length ? [] : findWarnings(parsed.rows, newRows, existing),
         unsentCount: info.unsentCount,
         sentLast24h: info.sentLast24h,
       });
@@ -204,6 +217,7 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
         <span className="font-medium">{loading ? "Reading…" : preview ? "Choose a different file" : "Choose Excel file (.xlsx)"}</span>
         <span className="text-xs text-muted-foreground">
           Columns: Student ID, Name, Purchaser Email, Dietary requirements, Membership
+          (dietary and membership may be blank)
         </span>
         <input
           ref={fileInput}
@@ -248,6 +262,23 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
               )}
             </CardContent>
           </Card>
+
+          {preview.warnings.length > 0 && (
+            <Alert className="border-amber-300 bg-amber-50 text-amber-950">
+              <AlertTriangle />
+              <AlertTitle>Check these rows (they look edited since the last upload)</AlertTitle>
+              <AlertDescription className="text-amber-900">
+                <ul className="mt-1 grid gap-1">
+                  {preview.warnings.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+                <p className="mt-2">
+                  You can still send. To fix an existing ticket, edit it in Supabase.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {overGmailLimit && (
             <Alert>

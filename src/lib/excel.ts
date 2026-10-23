@@ -5,6 +5,7 @@ import {
   MAX_ROWS,
   normaliseHeader,
   validateRows,
+  normaliseRow,
   type RowError,
   type TicketRow,
 } from "@/lib/tickets";
@@ -65,9 +66,9 @@ export function parseWorkbook(data: ArrayBuffer | Uint8Array): ParseResult {
   grid.slice(1).forEach((cells, i) => {
     const values = indexes.map(({ index }) => clean(cells[index]));
     if (values.every((v) => v === "")) return; // skip blank lines
-    const row = {} as TicketRow;
-    indexes.forEach(({ field }, j) => (row[field] = values[j]));
-    rows.push(row);
+    const raw: Partial<TicketRow> = {};
+    indexes.forEach(({ field }, j) => (raw[field] = values[j]));
+    rows.push(normaliseRow(raw));
     rowNumbers.push(i + 2);
   });
 

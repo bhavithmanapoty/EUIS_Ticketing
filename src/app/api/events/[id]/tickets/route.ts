@@ -3,31 +3,33 @@ import { getAuthedClient } from "@/lib/supabase/server";
 import {
   computeNewRows,
   countByStudent,
+  normaliseRow,
   validateRows,
+  type ExistingTicket,
   type TicketRow,
 } from "@/lib/tickets";
 import { isUuid } from "@/lib/types";
 
 type Supabase = NonNullable<Awaited<ReturnType<typeof getAuthedClient>>>;
 
-/** All Student IDs already ticketed for an event (paged past the 1000-row API cap). */
-async function existingStudentIds(supabase: Supabase, eventId: string): Promise<string[]> {
+/** All tickets already issued for an event (paged past the 1000-row API cap). */
+async function existingTickets(supabase: Supabase, eventId: string): Promise<ExistingTicket[]> {
   const PAGE = 1000;
-  const ids: string[] = [];
+  const tickets: ExistingTicket[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from("tickets")
-      .select("student_id")
+      .select("student_id, email")
       .eq("event_id", eventId)
       .order("id")
       .range(from, from + PAGE - 1);
     if (error) throw new Error(error.message);
-    ids.push(...data.map((t) => t.student_id));
-    if (data.length < PAGE) return ids;
+    tickets.push(...data.map((t) => ({ studentId: t.student_id, email: t.email })));
+    if (data.length < PAGE) return tickets;
   }
 }
 
-/** Data needed for the upload preview: existing ticket counts per student. */
+/** Data needed for the upload preview: existing tickets (for dedup + warnings). */
 export async function GET(
   _req: Request,
   ctx: RouteContext<"/api/events/[id]/tickets">
@@ -39,7 +41,7 @@ export async function GET(
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const [existing, unsent, recent] = await Promise.all([
-    existingStudentIds(supabase, id).then(
+    existingTickets(supabase, id).then(
       (data) => ({ data, error: null }),
       (e: Error) => ({ data: null, error: e })
     ),
@@ -57,7 +59,7 @@ export async function GET(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({
-    existingCounts: countByStudent(existing.data ?? []),
+    existing: existing.data ?? [],
     unsentCount: unsent.count ?? 0,
     sentLast24h: recent.count ?? 0,
   });
@@ -78,13 +80,7 @@ export async function POST(
   if (!rows || rows.length === 0) {
     return NextResponse.json({ error: "No rows" }, { status: 400 });
   }
-  const clean: TicketRow[] = rows.map((r) => ({
-    studentId: String(r.studentId ?? "").trim(),
-    name: String(r.name ?? "").trim(),
-    email: String(r.email ?? "").trim(),
-    dietaryRequirements: String(r.dietaryRequirements ?? "").trim(),
-    membership: String(r.membership ?? "").trim(),
-  }));
+  const clean: TicketRow[] = rows.map(normaliseRow);
   const errors = validateRows(clean);
   if (errors.length) {
     return NextResponse.json({ error: "Invalid rows", errors }, { status: 400 });
@@ -93,14 +89,14 @@ export async function POST(
   const { data: event } = await supabase.from("events").select("id").eq("id", id).maybeSingle();
   if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
-  let existing: string[];
+  let existing: ExistingTicket[];
   try {
-    existing = await existingStudentIds(supabase, id);
+    existing = await existingTickets(supabase, id);
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
 
-  const newRows = computeNewRows(clean, countByStudent(existing));
+  const newRows = computeNewRows(clean, countByStudent(existing.map((t) => t.studentId)));
   if (newRows.length) {
     const { error } = await supabase.from("tickets").insert(
       newRows.map((r) => ({
