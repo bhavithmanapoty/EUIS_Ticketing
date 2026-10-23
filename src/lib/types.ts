@@ -13,6 +13,7 @@ export type TicketRecord = {
   email: string;
   dietary_requirements: string;
   membership: string;
+  ticket_type: string | null;
   email_sent_at: string | null;
   email_error: string | null;
   send_claimed_at: string | null;
@@ -27,6 +28,7 @@ export type AttendeeDetails = {
   studentId: string;
   dietaryRequirements: string;
   membership: string;
+  ticketType: string | null;
 };
 
 export type VerifyResult =
@@ -43,6 +45,7 @@ export function toAttendee(t: TicketRecord): AttendeeDetails {
     studentId: t.student_id,
     dietaryRequirements: t.dietary_requirements,
     membership: t.membership,
+    ticketType: t.ticket_type,
   };
 }
 

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { IDetectedBarcode, IScannerError } from "@yudiel/react-qr-scanner";
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { DietBadge, MemberBadge } from "@/components/attendee-badges";
+import { DietBadge, MemberBadge, TicketTypeBadge } from "@/components/attendee-badges";
 import { Button } from "@/components/ui/button";
 import { formatScanTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -236,6 +236,7 @@ function Details({ attendee }: { attendee: AttendeeDetails }) {
       <div className="flex flex-wrap gap-2">
         <DietBadge value={attendee.dietaryRequirements} large />
         <MemberBadge value={attendee.membership} large />
+        <TicketTypeBadge value={attendee.ticketType} large />
       </div>
     </div>
   );

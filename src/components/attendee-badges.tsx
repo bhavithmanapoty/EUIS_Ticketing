@@ -20,6 +20,20 @@ export function DietBadge({ value, large }: { value: string; large?: boolean }) 
   );
 }
 
+export function TicketTypeBadge({ value, large }: { value: string | null; large?: boolean }) {
+  if (!value?.trim()) return null;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-md bg-violet-100 font-semibold text-violet-900",
+        large ? "px-3 py-1.5 text-lg" : "px-2 py-0.5 text-xs"
+      )}
+    >
+      {value}
+    </span>
+  );
+}
+
 export function MemberBadge({ value, large }: { value: string; large?: boolean }) {
   const member = value.trim().toLowerCase() === "member";
   return (

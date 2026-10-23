@@ -106,6 +106,7 @@ export async function POST(
         email: r.email,
         dietary_requirements: r.dietaryRequirements,
         membership: r.membership,
+        ticket_type: r.ticketType || null,
       }))
     );
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

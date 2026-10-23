@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Clock, FileSpreadsheet, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { DietBadge, MemberBadge } from "@/components/attendee-badges";
+import { DietBadge, MemberBadge, TicketTypeBadge } from "@/components/attendee-badges";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -216,8 +216,8 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
         <FileSpreadsheet className="size-8 text-muted-foreground" />
         <span className="font-medium">{loading ? "Reading…" : preview ? "Choose a different file" : "Choose Excel file (.xlsx)"}</span>
         <span className="text-xs text-muted-foreground">
-          Columns: Student ID, Name, Purchaser Email, Dietary requirements, Membership
-          (dietary and membership may be blank)
+          Columns: Student ID, Name, Purchaser Email, Dietary requirements, Membership,
+          optional Ticket Type (dietary, membership and ticket type may be blank)
         </span>
         <input
           ref={fileInput}
@@ -303,6 +303,7 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
                   <div className="mt-1 flex gap-1">
                     <DietBadge value={r.dietaryRequirements} />
                     <MemberBadge value={r.membership} />
+                    <TicketTypeBadge value={r.ticketType} />
                   </div>
                 </li>
               ))}

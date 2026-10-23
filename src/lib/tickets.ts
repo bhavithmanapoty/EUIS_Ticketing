@@ -6,6 +6,8 @@ export type TicketRow = {
   email: string;
   dietaryRequirements: string;
   membership: string;
+  /** Optional column; "" when the column is absent or the cell is blank. */
+  ticketType: string;
 };
 
 export type RowError = { row: number; message: string };
@@ -19,12 +21,18 @@ export const COLUMNS: { header: string; field: keyof TicketRow }[] = [
   { header: "membership", field: "membership" },
 ];
 
+/** Columns that may be missing from the sheet entirely. */
+export const OPTIONAL_COLUMNS: { header: string; field: keyof TicketRow }[] = [
+  { header: "ticket type", field: "ticketType" },
+];
+
 export const COLUMN_LABELS: Record<keyof TicketRow, string> = {
   studentId: "Student ID",
   name: "Name",
   email: "Purchaser Email",
   dietaryRequirements: "Dietary requirements",
   membership: "Membership",
+  ticketType: "Ticket Type",
 };
 
 // Exactly one plain address: rejects "a@x.com,b@y.com", "a@x.com; b@y.com",
@@ -46,6 +54,7 @@ export function normaliseRow(r: Partial<Record<keyof TicketRow, unknown>>): Tick
     email: get("email"),
     dietaryRequirements: get("dietaryRequirements") || BLANK_VALUE,
     membership: get("membership") || BLANK_VALUE,
+    ticketType: get("ticketType"),
   };
 }
 

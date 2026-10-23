@@ -13,6 +13,7 @@ function row(studentId: string, name = "Test Person"): TicketRow {
     email: "test@example.com",
     dietaryRequirements: "Vegetarian",
     membership: "Member",
+    ticketType: "",
   };
 }
 
@@ -109,8 +110,8 @@ describe("parseWorkbook", () => {
     const result = parseWorkbook(data);
     expect(result.errors).toEqual([]);
     expect(result.rows).toEqual([
-      { studentId: "S100", name: "Alice", email: "alice@example.com", dietaryRequirements: "Vegetarian", membership: "Member" },
-      { studentId: "12345", name: "Bob", email: "bob@example.com", dietaryRequirements: "Non-Vegetarian", membership: "Non-Member" },
+      { studentId: "S100", name: "Alice", email: "alice@example.com", dietaryRequirements: "Vegetarian", membership: "Member", ticketType: "" },
+      { studentId: "12345", name: "Bob", email: "bob@example.com", dietaryRequirements: "Non-Vegetarian", membership: "Non-Member", ticketType: "" },
     ]);
   });
 
@@ -118,8 +119,26 @@ describe("parseWorkbook", () => {
     const result = parseWorkbook(xlsx([HEADERS, ["S1\u200b", "A\u00a0B", "a@b.co", "", ""]]));
     expect(result.errors).toEqual([]);
     expect(result.rows[0]).toEqual({
-      studentId: "S1", name: "A B", email: "a@b.co", dietaryRequirements: "None", membership: "None",
+      studentId: "S1", name: "A B", email: "a@b.co", dietaryRequirements: "None", membership: "None", ticketType: "",
     });
+  });
+
+  it("reads the optional Ticket Type column when present (blank cells allowed)", () => {
+    const result = parseWorkbook(
+      xlsx([
+        [...HEADERS, "Ticket Type"],
+        ["S1", "A", "a@b.co", "Veg", "Member", "VIP"],
+        ["S2", "B", "b@b.co", "Veg", "Member", ""],
+      ])
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.rows.map((r) => r.ticketType)).toEqual(["VIP", ""]);
+  });
+
+  it("works without the Ticket Type column", () => {
+    const result = parseWorkbook(xlsx([HEADERS, ["S1", "A", "a@b.co", "Veg", "Member"]]));
+    expect(result.errors).toEqual([]);
+    expect(result.rows[0].ticketType).toBe("");
   });
 
   it("reports missing columns", () => {

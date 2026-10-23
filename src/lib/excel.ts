@@ -3,6 +3,7 @@ import {
   COLUMNS,
   COLUMN_LABELS,
   MAX_ROWS,
+  OPTIONAL_COLUMNS,
   normaliseHeader,
   validateRows,
   normaliseRow,
@@ -61,13 +62,20 @@ export function parseWorkbook(data: ArrayBuffer | Uint8Array): ParseResult {
     };
   }
 
+  // Optional columns are only read when the header is present.
+  const optional = OPTIONAL_COLUMNS.map(({ header, field }) => ({
+    field,
+    index: headers.indexOf(header),
+  })).filter((c) => c.index !== -1);
+  const allIndexes = [...indexes, ...optional];
+
   const rows: TicketRow[] = [];
   const rowNumbers: number[] = [];
   grid.slice(1).forEach((cells, i) => {
-    const values = indexes.map(({ index }) => clean(cells[index]));
+    const values = allIndexes.map(({ index }) => clean(cells[index]));
     if (values.every((v) => v === "")) return; // skip blank lines
     const raw: Partial<TicketRow> = {};
-    indexes.forEach(({ field }, j) => (raw[field] = values[j]));
+    allIndexes.forEach(({ field }, j) => (raw[field] = values[j]));
     rows.push(normaliseRow(raw));
     rowNumbers.push(i + 2);
   });
