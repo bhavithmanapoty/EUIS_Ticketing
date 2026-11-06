@@ -45,6 +45,8 @@ const FATAL_SMTP = /5\.4\.5|Daily user sending limit|5\.7\.8|GMAIL_USER/i;
 // Gmail login throttling: clears after a while, so wait and retry the batch.
 const THROTTLED_SMTP = /454|4\.7\.0|Too many login attempts/i;
 const RETRY_DELAYS_S = [60, 120, 240];
+// Pause between batches so Gmail sees a steady trickle rather than a burst.
+const BATCH_GAP_MS = 5000;
 const GMAIL_DAILY_SAFE_LIMIT = 450;
 
 type SendResult = { id: string; ok: boolean; error?: string };
@@ -150,6 +152,7 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
 
       let stopReason: string | null = null;
       for (let i = 0; i < list.length && !stopReason; i += BATCH_SIZE) {
+        if (i > 0) await sleep(BATCH_GAP_MS);
         let ids = list.slice(i, i + BATCH_SIZE).map((b) => b.id);
         for (let attempt = 0; ; attempt++) {
           let results: SendResult[];
