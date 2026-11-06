@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
+  CircleSlash,
   Clock,
   FileSpreadsheet,
   Info,
@@ -38,10 +39,17 @@ import {
   type TicketRow,
 } from "@/lib/tickets";
 
-const BATCH_SIZE = 5;
-// Gmail daily limit / throttling / bad login: every further attempt would fail too.
-const FATAL_SMTP = /5\.4\.5|Daily user sending limit|454|Too many login attempts|Invalid login|5\.7\.8|GMAIL_USER/i;
+const BATCH_SIZE = 10; // one Gmail login per batch, so keep it at the server's MAX_BATCH
+// Gmail daily limit / bad credentials: every further attempt would fail too.
+const FATAL_SMTP = /5\.4\.5|Daily user sending limit|5\.7\.8|GMAIL_USER/i;
+// Gmail login throttling: clears after a while, so wait and retry the batch.
+const THROTTLED_SMTP = /454|4\.7\.0|Too many login attempts/i;
+const RETRY_DELAYS_S = [60, 120, 240];
 const GMAIL_DAILY_SAFE_LIMIT = 450;
+
+type SendResult = { id: string; ok: boolean; error?: string };
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Preview = {
   fileName: string;
@@ -82,6 +90,8 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [items, setItems] = useState<SendItem[] | null>(null);
   const [sending, setSending] = useState(false);
+  const [retryIn, setRetryIn] = useState<number | null>(null);
+  const [stopped, setStopped] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const sendStarted = useRef(false); // blocks double taps before React re-renders
 
@@ -129,6 +139,7 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
     sendStarted.current = true;
     setConfirmOpen(false);
     setSending(true);
+    setStopped(null);
     try {
       const { unsent } = await postJson<{ unsent: { id: string; name: string; email: string }[] }>(
         `/api/events/${eventId}/tickets`,
@@ -137,37 +148,62 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
       let list: SendItem[] = unsent.map((t) => ({ ...t, status: "pending" }));
       setItems(list);
 
-      for (let i = 0; i < list.length; i += BATCH_SIZE) {
-        const batch = list.slice(i, i + BATCH_SIZE);
-        let results: { id: string; ok: boolean; error?: string }[];
-        let fatal: string | null = null;
-        try {
-          ({ results } = await postJson<{ results: typeof results }>("/api/tickets/send", {
-            ticketIds: batch.map((b) => b.id),
-          }));
-          fatal = results.find((r) => !r.ok && r.error && FATAL_SMTP.test(r.error))?.error ?? null;
-        } catch (e) {
-          results = batch.map((b) => ({ id: b.id, ok: false, error: (e as Error).message }));
-          if (FATAL_SMTP.test((e as Error).message)) fatal = (e as Error).message;
-        }
-        list = list.map((item) => {
-          const r = results.find((x) => x.id === item.id);
-          return r ? { ...item, status: r.ok ? "sent" : "failed", error: r.error } : item;
-        });
-        setItems(list);
-        if (fatal) {
-          toast.error(`Stopped sending: ${fatal}`, { duration: 15000 });
-          break;
+      let stopReason: string | null = null;
+      for (let i = 0; i < list.length && !stopReason; i += BATCH_SIZE) {
+        let ids = list.slice(i, i + BATCH_SIZE).map((b) => b.id);
+        for (let attempt = 0; ; attempt++) {
+          let results: SendResult[];
+          try {
+            ({ results } = await postJson<{ results: SendResult[] }>("/api/tickets/send", {
+              ticketIds: ids,
+            }));
+          } catch (e) {
+            results = ids.map((id) => ({ id, ok: false, error: (e as Error).message }));
+          }
+          list = list.map((item) => {
+            const r = results.find((x) => x.id === item.id);
+            return r ? { ...item, status: r.ok ? "sent" : "failed", error: r.error } : item;
+          });
+          setItems(list);
+
+          const errors = results.filter((r) => !r.ok).map((r) => r.error ?? "");
+          const fatal = errors.find((e) => FATAL_SMTP.test(e));
+          if (fatal) {
+            stopReason = fatal;
+            break;
+          }
+          const throttled = results.filter((r) => !r.ok && THROTTLED_SMTP.test(r.error ?? ""));
+          if (throttled.length === 0) break;
+          if (attempt >= RETRY_DELAYS_S.length) {
+            stopReason = throttled[0].error!;
+            break;
+          }
+          for (let s = RETRY_DELAYS_S[attempt]; s > 0; s--) {
+            setRetryIn(s);
+            await sleep(1000);
+          }
+          setRetryIn(null);
+          // Retry only the throttled ones; failures already released their send claim.
+          ids = throttled.map((r) => r.id);
+          list = list.map((item) =>
+            ids.includes(item.id) ? { ...item, status: "pending", error: undefined } : item
+          );
+          setItems(list);
         }
       }
 
-      const failed = list.filter((x) => x.status === "failed").length;
-      if (failed) toast.error(`${failed} email(s) failed. Re-upload the sheet to retry them.`);
+      if (stopReason) {
+        setStopped(stopReason);
+        toast.error(`Stopped sending: ${stopReason}`, { duration: 15000 });
+      }
+      const notSent = list.filter((x) => x.status !== "sent").length;
+      if (notSent) toast.error(`${notSent} email(s) not sent. Re-upload the sheet later to retry them.`);
       else toast.success(`Sent ${list.length} ticket(s)`);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setSending(false);
+      setRetryIn(null);
       setPreview(null);
       sendStarted.current = false;
     }
@@ -178,6 +214,7 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
     const done = items.filter((x) => x.status !== "pending").length;
     const sent = items.filter((x) => x.status === "sent").length;
     const failed = items.filter((x) => x.status === "failed").length;
+    const notAttempted = sending ? 0 : items.length - done;
     return (
       <div className="grid grid-cols-1 gap-4">
         <Card>
@@ -185,13 +222,25 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
             <div className="flex items-center gap-2 text-lg font-semibold text-navy">
               {sending ? (
                 <Loader2 className="size-5 animate-spin text-saffron-ink" />
-              ) : failed ? (
+              ) : failed || notAttempted ? (
                 <AlertTriangle className="size-5 text-amber-600" />
               ) : (
                 <CheckCircle2 className="size-5 text-success" />
               )}
-              {sending ? `Sending ${done} / ${items.length}…` : "Finished"}
+              {sending
+                ? retryIn
+                  ? `Gmail is throttling, retrying in ${retryIn}s…`
+                  : `Sending ${done} / ${items.length}…`
+                : stopped
+                  ? `Stopped: ${failed + notAttempted} not sent`
+                  : "Finished"}
             </div>
+            {stopped && !sending && (
+              <p className="text-sm break-words text-red-800">
+                {stopped}. Wait a while, then re-upload the same sheet to send the rest. Nobody
+                gets a second email.
+              </p>
+            )}
             <Progress value={items.length ? (done / items.length) * 100 : 100} />
             <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
               <span className="font-medium text-success">{sent} sent</span>
@@ -214,13 +263,21 @@ export function SendTickets({ eventId, eventName }: { eventId: string; eventName
                 it.status === "failed" && "border-red-200 bg-red-50/60"
               )}
             >
-              {it.status === "pending" && <Clock className="mt-0.5 size-5 shrink-0 text-muted-foreground" />}
+              {it.status === "pending" &&
+                (sending ? (
+                  <Clock className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+                ) : (
+                  <CircleSlash className="mt-0.5 size-5 shrink-0 text-amber-600" />
+                ))}
               {it.status === "sent" && <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" />}
               {it.status === "failed" && <XCircle className="mt-0.5 size-5 shrink-0 text-red-600" />}
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{it.name}</div>
                 <div className="truncate text-muted-foreground">{it.email}</div>
                 {it.error && <div className="mt-1 text-red-800 break-words">{it.error}</div>}
+                {it.status === "pending" && !sending && (
+                  <div className="mt-1 text-amber-800">Not attempted. Re-upload the sheet later to send.</div>
+                )}
               </div>
             </li>
           ))}

@@ -14,8 +14,9 @@ function escapeHtml(s: string): string {
 }
 
 /**
- * One transporter per request. Serverless instances don't keep SMTP pools
- * alive between invocations, so pooling/rate options would do nothing.
+ * One transporter per request. Pooled with a single connection so a batch
+ * logs in to Gmail once; unpooled, nodemailer logs in again for every message
+ * and Gmail answers "454 4.7.0 Too many login attempts". Callers must close().
  */
 export function createMailer() {
   const user = process.env.GMAIL_USER;
@@ -27,6 +28,9 @@ export function createMailer() {
     host: "smtp.gmail.com",
     port: 465,
     secure: true,
+    pool: true,
+    maxConnections: 1,
+    maxMessages: Infinity,
     auth: { user, pass: pass.replace(/\s+/g, "") },
   });
 }
